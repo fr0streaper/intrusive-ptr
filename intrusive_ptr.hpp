@@ -5,10 +5,18 @@
 
 namespace smart_ptr {
 
-    namespace {
+
+//    template<typename T>
+//    class intrusive_ptr;
+//
+//    namespace {
 
         struct intrusive_ptr_base {
 
+        template<typename T>
+        friend class intrusive_ptr;
+
+        protected:
             virtual void add_ref() = 0;
 
             virtual void release() = 0;
@@ -17,16 +25,17 @@ namespace smart_ptr {
 
         };
 
-    }
+//    }
 
     template<typename T>
     class intrusive_ptr : public intrusive_ptr_base {
+    private:
 
         intrusive_ptr_base *handler = nullptr;
         T *value = nullptr;
 
-    public:
 
+    private:
         void add_ref() override {
             if (handler != nullptr) {
                 handler->add_ref();
@@ -43,6 +52,7 @@ namespace smart_ptr {
             }
         }
 
+    public:
         intrusive_ptr() = default;
 
         explicit intrusive_ptr(T *value) : value(value), handler(nullptr) {
@@ -104,8 +114,7 @@ namespace smart_ptr {
             }
 
             std::swap(value, other.value);
-            handler = &other;
-            other.handler = this;
+            std::swap(handler, other.handler);
         }
 
         int get_refcnt() override {
