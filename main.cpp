@@ -6,19 +6,15 @@
 
 namespace {
 
-    class daniel {
+    class ref_counter {
 
         int ref_cnt = 0;
 
     public:
 
-        daniel() = default;
+        ref_counter() = default;
 
-        daniel(int ref_cnt) : ref_cnt(ref_cnt) {}
-
-        virtual ~daniel() {
-            release();
-        }
+        ref_counter(int value) : ref_cnt(value) {}
 
         void add_ref() {
             ++ref_cnt;
@@ -30,6 +26,44 @@ namespace {
 
         int get_refcnt() {
             return ref_cnt;
+        }
+
+    };
+
+    class daniel {
+
+        ref_counter *ref_cnt = nullptr;
+
+    public:
+
+        daniel() = default;
+
+        daniel(int ref_cnt) : ref_cnt(new ref_counter(ref_cnt)) {}
+
+        virtual ~daniel() {
+            release();
+        }
+
+        void add_ref() {
+            if (ref_cnt == nullptr) {
+                ref_cnt = new ref_counter();
+            }
+            ref_cnt->add_ref();
+        }
+
+        void release() {
+            ref_cnt->release();
+            if (ref_cnt->get_refcnt() == 0) {
+                delete ref_cnt;
+            }
+        }
+
+        int get_refcnt() {
+            if (ref_cnt == nullptr) {
+                return 0;
+            } else {
+                return ref_cnt->get_refcnt();
+            }
         }
 
     };
@@ -52,20 +86,16 @@ namespace {
 
     };
 
-    void swap(daniel *a, daniel *b) {
-
-    }
-
 }
 
 daniel *five, *four, *zero;
 cooler_daniel *cooler_five;
 
 void reinit_data() {
-    five = new daniel(4),
-    four = new daniel(3),
-    zero = new daniel(-1);
-    cooler_five = new cooler_daniel(4);
+    five = new daniel(5),
+    four = new daniel(4),
+    zero = new daniel(0);
+    cooler_five = new cooler_daniel(5);
 }
 
 bool test_construction() {
@@ -91,7 +121,7 @@ bool test_construction_refcnt() {
     smart_ptr::intrusive_ptr<daniel> null_ptr;
 
     result *= (four_ptr.get_refcnt() != five_ptr.get_refcnt());
-    result *= (zero_ptr.get_refcnt() == 0);
+    result *= (zero_ptr.get_refcnt() == 1);
     result *= (null_ptr.get_refcnt() == 0);
 
     return result;
@@ -107,14 +137,14 @@ bool test_copy_move_refcnt() {
     smart_ptr::intrusive_ptr<daniel> five_ptr_copy(five_ptr);
     smart_ptr::intrusive_ptr<daniel> four_ptr_move(std::move(four_ptr));
 
-    result *= (five_ptr.get_refcnt() == 6);
-    result *= (five_ptr_copy.get_refcnt() == 6);
-    result *= (four_ptr_move.get_refcnt() == 4);
+    result *= (five_ptr.get_refcnt() == 7);
+    result *= (five_ptr_copy.get_refcnt() == 7);
+    result *= (four_ptr_move.get_refcnt() == 5);
 
     five_ptr_copy = zero_ptr;
 
-    result *= (five_ptr.get_refcnt() == 5);
-    result *= (zero_ptr.get_refcnt() == 1);
+    result *= (five_ptr.get_refcnt() == 6);
+    result *= (zero_ptr.get_refcnt() == 2);
 
     return result;
 }
@@ -127,7 +157,7 @@ bool test_destruction_refcnt() {
     smart_ptr::intrusive_ptr<daniel> five_ptr_copy(five_ptr);
     five_ptr_copy.~intrusive_ptr<daniel>();
 
-    result *= (five_ptr.get_refcnt() == 5);
+    result *= (five_ptr.get_refcnt() == 6);
 
     return result;
 }
@@ -141,9 +171,9 @@ bool test_assignment() {
     smart_ptr::intrusive_ptr<daniel> five_ptr_copy = five_ptr;
     smart_ptr::intrusive_ptr<daniel> four_ptr_move = std::move(four_ptr);
 
-    result *= (five_ptr.get_refcnt() == 6);
-    result *= (five_ptr_copy.get_refcnt() == 6);
-    result *= (four_ptr_move.get_refcnt() == 4);
+    result *= (five_ptr.get_refcnt() == 7);
+    result *= (five_ptr_copy.get_refcnt() == 7);
+    result *= (four_ptr_move.get_refcnt() == 5);
 
     return result;
 }
@@ -156,8 +186,8 @@ bool test_swap() {
 
     five_ptr.swap(four_ptr);
 
-    result *= (five_ptr.get_refcnt() == 4);
-    result *= (four_ptr.get_refcnt() == 5);
+    result *= (five_ptr.get_refcnt() == 5);
+    result *= (four_ptr.get_refcnt() == 6);
 
     return result;
 }
@@ -190,9 +220,9 @@ bool test_dynamic_pointer_cast_and_inheritance_constructor() {
     bool result = true;
 
     smart_ptr::intrusive_ptr<daniel> five_ptr(cooler_five);
-    smart_ptr::intrusive_ptr<cooler_daniel> cooler_five_ptr;
-
-    cooler_five_ptr = smart_ptr::dynamic_pointer_cast<cooler_daniel>(five_ptr);
+    smart_ptr::intrusive_ptr<daniel> five_ptr2 = five_ptr;
+    smart_ptr::intrusive_ptr<cooler_daniel> cooler_five_ptr = smart_ptr::dynamic_pointer_cast<cooler_daniel>(five_ptr);
+    auto cooler_five_ptr2 = cooler_five_ptr;
 
     result *= (cooler_five_ptr.get_refcnt() == five_ptr.get_refcnt());
 
