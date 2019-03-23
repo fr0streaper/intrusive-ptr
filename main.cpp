@@ -32,6 +32,8 @@ namespace {
 
     class daniel {
 
+    protected:
+
         ref_counter *ref_cnt = nullptr;
 
     public:
@@ -42,6 +44,9 @@ namespace {
 
         virtual ~daniel() {
             release();
+            if (ref_cnt != nullptr) {
+                std::cerr << "YOU MESSED UP BIG TIME, DANIEL\n";
+            }
         }
 
         void add_ref() {
@@ -70,18 +75,39 @@ namespace {
 
     class cooler_daniel : public daniel {
 
+    protected:
+
+        ref_counter *ref_cnt = nullptr;
+
     public:
 
         cooler_daniel() = default;
 
         cooler_daniel(int ref_cnt) : daniel(ref_cnt) {}
 
-        ~cooler_daniel() {
+        ~cooler_daniel() override {
             release();
+            if (ref_cnt != nullptr) {
+                std::cerr << "YOU MESSED UP BIG TIME, COOLER DANIEL\n";
+            }
         }
 
         void flex() {
             std::cout << "FLEXING\n";
+        }
+
+        void add_ref() {
+            if (ref_cnt == nullptr) {
+                ref_cnt = new ref_counter();
+            }
+            ref_cnt->add_ref();
+        }
+
+        void release() {
+            ref_cnt->release();
+            if (ref_cnt->get_refcnt() == 0) {
+                delete ref_cnt;
+            }
         }
 
     };
@@ -220,7 +246,7 @@ bool test_dynamic_pointer_cast_and_inheritance_constructor() {
     bool result = true;
 
     smart_ptr::intrusive_ptr<daniel> five_ptr(cooler_five);
-    smart_ptr::intrusive_ptr<daniel> five_ptr2 = five_ptr;
+    smart_ptr::intrusive_ptr five_ptr2 = five_ptr;
     smart_ptr::intrusive_ptr<cooler_daniel> cooler_five_ptr = smart_ptr::dynamic_pointer_cast<cooler_daniel>(five_ptr);
     auto cooler_five_ptr2 = cooler_five_ptr;
 
